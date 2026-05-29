@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">System Routing Allocation Engine</h2>
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm p-4">
+            <h5 class="mb-3">Request Target Routing Allocation</h5>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Search & Match Target Range</label>
+                <input type="text" id="searchBar" class="form-control mb-2" placeholder="Type to search user channels..." onkeyup="filterUserRanges()">
+                
+                <input type="hidden" id="selectedRid" value="">
+                
+                <div id="rangeListContainer" class="border rounded p-2" style="max-height: 220px; overflow-y: auto; background-color: #fff;">
+                    {% for rng in ranges %}
+                        <div class="range-item p-2 border-bottom" style="cursor: pointer;" data-id="{{ rng.db_id }}" onclick="selectUserRange(this)">
+                            {{ rng.label }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div id="selectionFeedback" class="text-success small mt-2 fw-bold"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Allocation Limit Quantity</label>
+                <input type="number" id="qtyInput" class="form-control" value="10" min="1">
+            </div>
+            <button onclick="triggerAllocation()" class="btn btn-warning w-100 fw-bold">Process Twin-Pass Matrix Push</button>
+            <div id="statusMessage" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .range-item:hover { background-color: #f1f3f5; }
+    .range-item.selected-active { background-color: #e2f0d9; border-left: 4px solid #28a745; fw-bold; }
+</style>
+
+<script>
+    function filterUserRanges() {
+        const input = document.getElementById('searchBar').value.toLowerCase();
+        const items = document.getElementsByClassName('range-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const txtValue = items[i].textContent || items[i].innerText;
+            if (txtValue.toLowerCase().indexOf(input) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+
+    function selectUserRange(element) {
+        const items = document.getElementsByClassName('range-item');
+        for(let i=0; i<items.length; i++) {
+            items[i].classList.remove('selected-active');
+        }
+        
+        element.classList.add('selected-active');
+        const rid = element.getAttribute('data-id');
+        const label = element.innerText.trim();
+        
+        document.getElementById('selectedRid').value = rid;
+        document.getElementById('selectionFeedback').innerText = "Selected Target Context: " + label;
+    }
+
+    function triggerAllocation() {
+        const rid = document.getElementById("selectedRid").value;
+        const qty = document.getElementById("qtyInput").value;
+        const statusDiv = document.getElementById("statusMessage");
+        
+        if(!rid) {
+            statusDiv.innerHTML = `<div class="alert alert-danger">Error: Please query and select a valid matched target channel option line first.</div>`;
+            return;
+        }
+        
+        statusDiv.innerHTML = `<div class="alert alert-info">Executing script allocation channels... Please hold.</div>`;
+        
+        fetch('/api/allocate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rid: rid, qty: qty })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            } else {
+                statusDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+            }
+        });
+    }
+</script>
+{% endblock %}

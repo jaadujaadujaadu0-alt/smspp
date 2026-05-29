@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">System Operational Dashboard Overview</h2>
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white p-4 shadow-sm">
+            <h5>Today's SMS Volume</h5>
+            <h2 class="display-5 font-weight-bold">{{ stats.today }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white p-4 shadow-sm">
+            <h5>Last 7 Days Run Total</h5>
+            <h2 class="display-5 font-weight-bold">{{ stats.last7 }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-dark text-white p-4 shadow-sm">
+            <h5>Last 30 Days Running Metrics</h5>
+            <h2 class="display-5 font-weight-bold">{{ stats.last30 }}</h2>
+        </div>
+    </div>
+</div>
+{% endblock %}

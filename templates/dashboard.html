@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Allocated Numbers Real-time Index</h2>
+
+<div class="card shadow-sm p-3 mb-4 bg-light">
+    <div class="row align-items-center">
+        <div class="col-md-4 col-sm-6">
+            <label for="rangeFilter" class="form-label small fw-bold text-uppercase text-secondary">Filter by Available Range</label>
+            <select class="form-select" id="rangeFilter">
+                <option value="ALL">-- See All Numbers --</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm p-4">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle custom-nums-table" id="numbersTable">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">#</th>
+                    <th style="width: 46%;">Range</th>
+                    <th style="width: 46%;">Number</th>
+                </tr>
+            </thead>
+            <tbody id="numbersBody">
+                <tr><td colspan="3" class="text-center text-muted py-4">Polling current target allocation stream array...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .custom-nums-table {
+        border-color: #dee2e6 !important;
+    }
+    .custom-nums-table thead tr th {
+        background-color: #212529 !important;
+        color: #ffffff !important;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 12px 16px !important;
+        border: 1px solid #343a40 !important;
+    }
+    .custom-nums-table td {
+        padding: 12px 16px !important;
+    }
+    .num-bold-text {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 0.95rem;
+    }
+    .range-display-text {
+        color: #334155;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let allCachedRows = []; // Keep track of numbers in memory for fast filtering
+        const tbody = document.getElementById("numbersBody");
+        const rangeFilter = document.getElementById("rangeFilter");
+
+        // Main function to build/render table rows based on active filter criteria
+        function renderTable(selectedRange) {
+            tbody.innerHTML = "";
+            let visibleIndex = 1;
+
+            allCachedRows.forEach(row => {
+                if (selectedRange !== "ALL" && row.range !== selectedRange) {
+                    return; // Skip if it doesn't match dropdown filter value
+                }
+
+                let tr = document.createElement("tr");
+                tr.innerHTML = `<td>${visibleIndex}</td>
+                                <td><span class="range-display-text">${row.range}</span></td>
+                                <td><span class="num-bold-text">${row.number}</span></td>`;
+                                
+                tbody.appendChild(tr);
+                visibleIndex++;
+            });
+
+            if (visibleIndex === 1) {
+                tbody.innerHTML = "<tr><td colspan='3' class='text-center py-4 text-muted'>No matching numbers found for this range selection.</td></tr>";
+            }
+        }
+
+        // Fetch numbers data array
+        fetch('/api/numbers')
+            .then(res => res.json())
+            .then(data => {
+                if(!data.aaData || data.aaData.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='3' class='text-center py-4 text-muted'>No active inventory lines mapped.</td></tr>";
+                    return;
+                }
+                
+                const uniqueRanges = new Set();
+                allCachedRows = [];
+
+                data.aaData.forEach((row) => {
+                    if (!row || !row[0]) return;
+                    
+                    let firstCellRaw = String(row[0]).trim();
+                    
+                    // Filter out trailing Datatables configuration layout strings
+                    if(firstCellRaw.includes('sEcho') || 
+                       firstCellRaw.includes('iTotalRecords') || 
+                       firstCellRaw.includes('{') || 
+                       firstCellRaw === '') {
+                        return;
+                    }
+                    
+                    // Parse data fields explicitly matching your array positioning rules
+                    let displayRange = row[0] ? String(row[0]).replace(/<[^>]*>/g, '').trim() : 'N/A';
+                    let field1 = row[1] ? String(row[1]).replace(/<[^>]*>/g, '').trim() : '';
+                    let field2 = row[2] ? String(row[2]).replace(/<[^>]*>/g, '').trim() : '';
+                    let field3 = row[3] ? String(row[3]).replace(/<[^>]*>/g, '').trim() : '';
+                    
+                    let cleanNum = 'N/A';
+                    if (field2 && /^\d+$/.test(field2.replace(/[\s\+\-\(\)]/g, ''))) {
+                        cleanNum = field2; 
+                    } else if (field3 && /^\d+$/.test(field3.replace(/[\s\+\-\(\)]/g, ''))) {
+                        cleanNum = field3; 
+                    } else if (field1 && /^\d+$/.test(field1.replace(/[\s\+\-\(\)]/g, ''))) {
+                        cleanNum = field1; 
+                    } else {
+                        cleanNum = field2 || field1 || 'N/A';
+                    }
+
+                    // Save values inside our memory cache matrix array object
+                    allCachedRows.push({
+                        range: displayRange,
+                        number: cleanNum
+                    });
+
+                    // Collect the range names uniquely to build dropbar options list dynamically
+                    if (displayRange !== 'N/A') {
+                        uniqueRanges.add(displayRange);
+                    }
+                });
+
+                // Populate dropbar selection option rows list elements sequentially
+                uniqueRanges.forEach(rangeName => {
+                    let opt = document.createElement("option");
+                    opt.value = rangeName;
+                    opt.textContent = rangeName;
+                    rangeFilter.appendChild(opt);
+                });
+
+                // Trigger direct full initial view display sequence logic block
+                renderTable("ALL");
+            })
+            .catch(err => {
+                console.error("Data tracking poll stream failed:", err);
+                tbody.innerHTML = "<tr><td colspan='3' class='text-center py-4 text-danger'>Data tracking poll stream exception failure.</td></tr>";
+            });
+
+        // Watch dropdown choice alterations to trigger filter table changes immediately
+        rangeFilter.addEventListener("change", function() {
+            renderTable(this.value);
+        });
+    });
+</script>
+{% endblock %}

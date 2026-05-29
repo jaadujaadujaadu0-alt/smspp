@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block login_content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card p-4 shadow" style="width: 400px;">
+        <h3 class="text-center mb-4">Portal Gateway Login</h3>
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        <form action="/login" method="POST">
+            <div class="mb-3">
+                <label class="form-label">Client Username</label>
+                <input type="text" name="username" class="form-control" placeholder="e.g. Ashok20" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" placeholder="e.g. aura20" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Authenticate Pipeline</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

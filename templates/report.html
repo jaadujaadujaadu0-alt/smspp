@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">SMS CDR Logs Dataset Reporting Portal</h2>
+
+<div class="card shadow-sm p-4 mb-4 bg-light">
+    <form method="POST" id="reportForm" action="/report" class="row g-3 align-items-end">
+        <div class="col-md-3 col-sm-6">
+            <label class="form-label small fw-bold text-uppercase text-secondary">Query Window Date Target</label>
+            <input type="date" name="date" id="targetDate" class="form-control" value="{{ target_date }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-dark px-4">Pull Complete Stream Dataset</button>
+        </div>
+    </form>
+</div>
+
+<div class="card shadow-sm p-4">
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover align-middle custom-report-table small">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 15%;">Date Time</th>
+                    <th style="width: 18%;">Range</th>
+                    <th style="width: 18%;">Number</th>
+                    <th style="width: 14%;">CLI</th>
+                    <th style="width: 30%;">Full Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if records %}
+                    {% set ns = namespace(count=1) %}
+                    {% for row in records %}
+                        {# Strict validation checking: block summary/aggregate lines missing timestamp structure #}
+                        {% if row and row[0] and '-' in row[0] and ':' in row[0] %}
+                            <tr>
+                                <td>{{ ns.count }}</td>
+                                <td><span class="text-muted">{{ row[0] or '' }}</span></td>
+                                
+                                <td><span class="fw-bold text-dark">{{ row[1] or '' }}</span></td>
+                                
+                                <td><span class="text-primary fw-bold">{{ row[2] or '' }}</span></td>
+                                
+                                <td><span class="badge bg-light text-dark border px-2 py-1">{{ row[3] or '' }}</span></td>
+                                
+                                <td><strong>{{ row[4] or '' }}</strong></td>
+                            </tr>
+                            {% set ns.count = ns.count + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if ns.count == 1 %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                No active data rows found for the selected query window.
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No operational records found. Please click 'Pull Complete Stream Dataset' to query.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .custom-report-table {
+        border-color: #dee2e6 !important;
+    }
+    .custom-report-table thead tr th {
+        background-color: #212529 !important;
+        color: #ffffff !important;
+        text-transform: uppercase;
+        font-size: 0.82rem;
+        letter-spacing: 0.5px;
+        padding: 12px 14px !important;
+        border: 1px solid #343a40 !important;
+    }
+    .custom-report-table tbody td {
+        padding: 10px 14px !important;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const dateInput = document.getElementById("targetDate");
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. Calculate today's date in local YYYY-MM-DD format
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        let mm = today.getMonth() + 1; 
+        let dd = today.getDate();
+
+        if (mm < 10) mm = '0' + mm;
+        if (dd < 10) dd = '0' + dd;
+        const formattedToday = yyyy + '-' + mm + '-' + dd;
+
+        // 2. If no explicit date was rendered by the backend, set it to today
+        if (!dateInput.value) {
+            dateInput.value = formattedToday;
+        }
+
+        // 3. If the page is opened cleanly (GET request) and we haven't auto-submitted yet, run it immediately
+        if (!urlParams.has('loaded') && window.history.state !== 'submitted') {
+            // Mark the history state so back/forward actions don't loop submissions infinitely
+            window.history.replaceState('submitted', '');
+            
+            // Append a tracking parameter to the current action layout and submit
+            const form = document.getElementById("reportForm");
+            form.action = "/report?loaded=true";
+            form.submit();
+        }
+    });
+</script>
+{% endblock %}
